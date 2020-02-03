@@ -1,7 +1,7 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Home from '../views/Home.vue'
-import Store from '../store'
+// import Store from '../store'
 
 Vue.use(VueRouter)
 
@@ -28,7 +28,7 @@ const router = new VueRouter({
 	routes
 })
 router.beforeEach((to, from, next) => {
-	Store.dispatch('setCurrentRoute', to);
+	// Store.dispatch('setCurrentRoute', to);
 	next();
 })
 

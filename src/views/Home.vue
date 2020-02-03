@@ -14,7 +14,13 @@
 		<v-row align="center" justify="center">
 			<v-col cols="2" sm="12" md="2" class="dashboard">
 				<v-card class="elevation-12">
-					<v-card-title>오목게임</v-card-title>
+					<v-card-title>
+						오목게임
+						<v-spacer></v-spacer>
+						<v-btn color="error" v-if="isGameStarted" @click="abortGameConfirm()">중단</v-btn>
+						<v-btn color="primary" v-if="!isGameStarted" @click="startGame()">시작</v-btn>
+					</v-card-title>
+					<v-divider></v-divider>
 					<v-card-text>
 						<!-- <p class='custom-label'>다음 차례</p> -->
 						<v-radio-group v-model="isBlackStoneNumb" label="다음 차례" row>
@@ -31,6 +37,7 @@
 								</v-radio>
 							</v-layout>
 						</v-radio-group>
+						<v-divider></v-divider>
 						<v-select
 							v-model="oMokRowCount"
 							:items="oMokRowCounts"
@@ -40,21 +47,27 @@
 							@input="onChangeOMokRowCount"
 							:disabled="isGameStarted"
 						></v-select>
-						<v-container label="검정돌 제한 걸기">
+						<v-container>
+							<p>설정</p>
+							<v-switch v-model="allowShowStoneNumber" :label="`돌 번호표기`" :disabled="isGameStarted"></v-switch>
+							<v-switch v-model="allowRollBack" :label="`한수 무르기 허용`" :disabled="isGameStarted"></v-switch>
+							<v-switch
+								v-model="restrictOnlyBlack"
+								:label="restrictOnlyBlack?`흑돌만 제한룰`:`흑&흰돌 모두 제한 `"
+								:disabled="isGameStarted"
+							></v-switch>
+						</v-container>
+						<v-divider></v-divider>
+						<v-container>
+							<p>제한룰</p>
 							<v-switch v-model="restrict33" :label="`3 x 3 제한`" :disabled="isGameStarted"></v-switch>
 							<v-switch v-model="restrict34" :label="`3 x 4 제한`" :disabled="isGameStarted"></v-switch>
 							<v-switch v-model="restrict6" :label="`6 제한`" :disabled="isGameStarted"></v-switch>
-							<v-switch v-model="restrictOnlyBlack" :label="`위에 제한들 흑돌만 적용`" :disabled="isGameStarted"></v-switch>
 						</v-container>
 					</v-card-text>
-					<v-card-actions>
-						<v-spacer></v-spacer>
-						<v-btn color v-if="isGameStarted" @click="isGameStarted = false">정지</v-btn>
-						<v-btn color="primary" v-if="!isGameStarted" @click="startGame()">시작</v-btn>
-					</v-card-actions>
 				</v-card>
 			</v-col>
-			<v-col :cols="oMokRowCount==15?5:6" sm="12" :md="oMokRowCount==15?5:6">
+			<v-col :cols="oMokRowCount==15?5:6" sm="12" :md="oMokRowCount==15?5:6" class="dashboard">
 				<v-card class="elevation-12">
 					<v-card-text>
 						<div class="board">
@@ -71,11 +84,24 @@
 									:key="`col_${colNumbIdx+1}`"
 									@click="onClickBoard(rowNumb, colNumb)"
 								>
+									<div
+										v-if="allowShowStoneNumber && getStoneNumber(rowNumb, colNumb)"
+										class="stoneNumber"
+									>{{getStoneNumber(rowNumb, colNumb)}}</div>
 									<div class="col_grid"></div>
 								</div>
 							</div>
 						</div>
 					</v-card-text>
+					<v-card-actions>
+						<v-btn color='warning' @click="onClickRollBackLastStone" v-if='allowRollBack' :disabled="!allowRollBack">
+							<v-icon>mdi-arrow-left</v-icon>한수 무르기
+						</v-btn>
+						<v-spacer></v-spacer>
+						<v-btn color='error' @click="clearBoard()" v-if='!isGameStarted' :disabled="isGameStarted || (!blackStones.length && !whiteStones.length)">
+							<v-icon>mdi-border-clear</v-icon>보드 지우기
+						</v-btn>
+					</v-card-actions>
 				</v-card>
 			</v-col>
 		</v-row>
@@ -94,13 +120,39 @@
 				</v-card-text>
 				<v-card-actions>
 					<v-spacer></v-spacer>
-					<v-btn color="primary" text @click="dialog = false">Close</v-btn>
+					<v-btn color="primary" text @click="dialog = false">닫기</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
+		<v-dialog dark v-model="dialogConfirm" max-width="500px">
+			<v-card>
+				<v-card-title>
+					<span>확인</span>
+				</v-card-title>
+				<v-card-text class="title">{{dialogConfirmMsg}}</v-card-text>
+				<v-card-actions>
+					<v-spacer></v-spacer>
+					<v-btn color text @click="dialogConfirm = false">닫기</v-btn>
+					<v-btn color="success" @click="abortGame()">확인</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
+		<v-dialog dark v-model="dialogConfirmClearBoard" max-width="500px">
+			<v-card>
+				<v-card-title>
+					<span>확인</span>
+				</v-card-title>
+				<v-card-text class="title">{{dialogConfirmClearBoardMsg}}</v-card-text>
+				<v-card-actions>
+					<v-spacer></v-spacer>
+					<v-btn color text @click="dialogConfirmClearBoard = false">닫기</v-btn>
+					<v-btn color="error" @click="clearBoard(true)">지우기</v-btn>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
 		<v-snackbar v-model="snackbar">
 			그 자리에 놓을 수 없습니다!
-			<v-btn color="pink" text @click="snackbar = false">Close</v-btn>
+			<v-btn color="pink" text @click="snackbar = false">닫기</v-btn>
 		</v-snackbar>
 	</v-container>
 </template>
@@ -117,12 +169,17 @@ export default {
 			snackbar: false,
 			dialog: false,
 			dialogMsg: "",
+			dialogConfirm: false,
+			dialogConfirmMsg: "",
+			dialogConfirmClearBoard: false,
+			dialogConfirmClearBoardMsg: "",
 			isGameStarted: false,
 			isGameWon: false,
 			isBlackStone: true,
 			blackStones: [],
 			whiteStones: [],
 			gameBoardTAble: [],
+			stoneHistory: [],
 			oMokRowCount: 15,
 			oMokRowCounts: [15, 19],
 			inspectDirection: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
@@ -141,29 +198,14 @@ export default {
 			restrict33: true,
 			restrict34: true,
 			restrict6: true,
+			allowRollBack: true,
+			allowShowStoneNumber: false,
 			rules: {
 				oMokRowCount: val => {
 					return parseInt(val) == 15 || parseInt(val) == 19;
 				}
 			}
 		};
-	},
-	async beforeRouteEnter(to, from, next) {
-		try {
-			// next(vm => {
-			// 	if (vm.$store.state.isAuthed === null) {
-			// 		vm.$store.dispatch("getIsAuthed");
-			// 	}
-			// });
-			next();
-		} catch (e) {
-			// next({
-			// 	name: "login", // back to safety route //
-			// 	query: { redirectFrom: to.fullPath }
-			// });
-			console.error(e);
-			// return to, from, next;
-		}
 	},
 	watch: {},
 	mounted() {
@@ -194,6 +236,7 @@ export default {
 			this.isBlackStone = true;
 			this.blackStones = [];
 			this.whiteStones = [];
+			this.stoneHistory = [];
 			this.isGameStarted = false;
 			this.isGameWon = false;
 		},
@@ -209,6 +252,46 @@ export default {
 				}.bind(this),
 				timeout
 			);
+		},
+		abortGameConfirm(confirmMsg) {
+			if (this.isGameStarted) {
+				confirmMsg = confirmMsg
+					? confirmMsg
+					: "게임이 중단 됩니다. 신중하게 중단하세요.";
+				this.dialogConfirmMsg = confirmMsg;
+				this.dialogConfirm = true;
+
+				// this.dialogConfirmMsg = '신중하게 중단하세요. 되돌릴 수 없습니다.';
+				// if(!confirm('게임이 중단 됩니다. 신중하게 중단하세요.')){
+				// 	return;
+				// }
+				// if(!confirm('신중하게 중단하세요. 되돌릴 수 없습니다.')){
+				// 	return;
+				// }
+			}
+		},
+		abortGame() {
+			this.dialogConfirm = false;
+			this.isGameStarted = false;
+		},
+		clearBoardConfirm(confirmMsg) {
+			confirmMsg = confirmMsg
+				? confirmMsg
+				: "모든 기록이 지워집니다. 진행하시겠습니까?";
+			this.dialogConfirmClearBoardMsg = confirmMsg;
+			this.dialogConfirmClearBoard = true;
+		},
+		clearBoard(force){
+			if(force){
+				this.dialogConfirmClearBoard = false;
+			}else{
+				if (this.blackStones.length || this.whiteStones.length) {
+					this.clearBoardConfirm();
+					return;
+				}
+			}
+			this.blackStones = [];
+			this.whiteStones = [];
 		},
 		startGame() {
 			this.initGame();
@@ -233,6 +316,17 @@ export default {
 		},
 		getPositionNumb(rowNumb, colNumb) {
 			return (rowNumb - 1) * this.oMokRowCount + colNumb;
+		},
+		getStoneNumber(rowNumb, colNumb) {
+			if (!this.allowShowStoneNumber) return;
+			let positionNumb = this.getPositionNumb(rowNumb, colNumb);
+
+			for (let [idx, stone] of this.stoneHistory.entries()) {
+				if (stone.position == positionNumb) {
+					return idx + 1;
+				}
+			}
+			return false;
 		},
 		getEmptyStone(positionNumb) {
 			if (
@@ -329,7 +423,7 @@ export default {
 				// console.info("Debug / v :: ", v);
 
 				// 200 은 흰돌을 만났을 때, 카운트 하지 않기 위함.
-				if (v == 205) v = 5;
+				if (v % 200 == 5) v = 5;
 				if (v < 200) this.inRowCounter[v] += 1;
 				if (this.isNotValidPlacing()) {
 					return {
@@ -362,15 +456,62 @@ export default {
 			} else {
 				this.whiteStones.push(positionNumb);
 			}
+			this.stoneHistory.push({
+				isBlackStone: this.isBlackStone,
+				x: rowNumb,
+				y: colNumb,
+				position: positionNumb
+			});
 
 			let lIsBlackStone = this.isBlackStone ? 1 : 2;
 			this.gameBoardTAble[rowNumb][colNumb] = lIsBlackStone;
 
+			if (this.isGameStarted) {
+				let validResult = this.verifyPlaceStone(
+					rowNumb,
+					colNumb,
+					lIsBlackStone
+				);
+				if (validResult.end) {
+					if (validResult.win !== null) {
+						this.isGameWon = true;
+						this.isGameStarted = false;
+						setTimeout(
+							function() {
+								this.triggerDialog(
+									`${validResult.win == 1 ? "흑돌" : "흰돌"}이 이겼습니다!`,
+									false
+								);
+							}.bind(this),
+							50
+						);
+					}
+				} else {
+					if (validResult.invalid) {
+						if (this.isBlackStone) {
+							this.blackStones.splice(
+								this.blackStones.indexOf(positionNumb),
+								1
+							);
+						} else {
+							this.whiteStones.splice(
+								this.whiteStones.indexOf(positionNumb),
+								1
+							);
+						}
+						this.stoneHistory.splice(this.stoneHistory.length - 1, 1);
+
+						// console.info('Debug / this.blackStones, positionNumb :: ', this.blackStones, positionNumb);
+						this.gameBoardTAble[rowNumb][colNumb] = undefined;
+						this.snackbar = true;
+						return;
+					}
+				}
+			}
+
 			// 게임이 시작되지 않으면 마구 놓을 수 있도록 한다.
-			if (!this.isGameStarted) {
-				// let i=true;
-				// if(i == true){
-				if (this.isBoardFull()) {
+			if (this.isBoardFull()) {
+				if (!this.isGameStarted) {
 					if (this.oMokRowCount == 15) {
 						this.triggerDialog(
 							`이걸 다 채우다니!! 정말 대단한데?! 이것도 할 수 있을까?`,
@@ -384,38 +525,10 @@ export default {
 						);
 					}
 					this.initGame();
+				} else {
+					this.triggerDialog(`이걸 다 채우다니!! 무승부 입니다!`, false);
 				}
-				this.isBlackStone = !this.isBlackStone;
 				return;
-			}
-
-			let validResult = this.verifyPlaceStone(rowNumb, colNumb, lIsBlackStone);
-			if (validResult.end) {
-				if (validResult.win !== null) {
-					this.isGameWon = true;
-					this.isGameStarted = false;
-					setTimeout(
-						function() {
-							this.triggerDialog(
-								`${validResult.win == 1 ? "흑돌" : "흰돌"}이 이겼습니다!`,
-								false
-							);
-						}.bind(this),
-						50
-					);
-				}
-			} else {
-				if (validResult.invalid) {
-					if (this.isBlackStone) {
-						this.blackStones.splice(this.blackStones.indexOf(positionNumb), 1);
-					} else {
-						this.whiteStones.splice(this.whiteStones.indexOf(positionNumb), 1);
-					}
-					// console.info('Debug / this.blackStones, positionNumb :: ', this.blackStones, positionNumb);
-					this.gameBoardTAble[rowNumb][colNumb] = undefined;
-					this.snackbar = true;
-					return;
-				}
 			}
 
 			this.isBlackStone = !this.isBlackStone;
@@ -424,6 +537,24 @@ export default {
 		},
 		onChangeOMokRowCount() {
 			this.initGame();
+		},
+		onClickRollBackLastStone() {
+			var deletedStone = this.stoneHistory.splice(
+				this.stoneHistory.length - 1,
+				1
+			)[0];
+			if (deletedStone.isBlackStone) {
+				this.blackStones.splice(
+					this.blackStones.indexOf(deletedStone.position),
+					1
+				);
+			} else {
+				this.whiteStones.splice(
+					this.whiteStones.indexOf(deletedStone.position),
+					1
+				);
+			}
+			this.isBlackStone = deletedStone.isBlackStone;
 		}
 	}
 };
@@ -558,5 +689,18 @@ export default {
 	border-top: none;
 	border-bottom: none;
 	border-right: none;
+}
+.board-col .stoneNumber {
+	top: 0;
+	position: absolute;
+	color: #fff;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	text-align: center;
+	line-height: 2.5;
+}
+.board-col.whiteStone .stoneNumber {
+	color: #000;
 }
 </style>
