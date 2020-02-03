@@ -49,7 +49,7 @@
 						></v-select>
 						<v-container>
 							<p>설정</p>
-							<v-switch v-model="allowShowStoneNumber" :label="`돌 번호표기`" :disabled="isGameStarted"></v-switch>
+							<v-switch v-model="allowShowStoneNumber" :label="`돌 번호표기`"></v-switch>
 							<v-switch v-model="allowRollBack" :label="`한수 무르기 허용`" :disabled="isGameStarted"></v-switch>
 							<v-switch
 								v-model="restrictOnlyBlack"
@@ -68,8 +68,18 @@
 				</v-card>
 			</v-col>
 			<v-col :cols="oMokRowCount==15?5:6" sm="12" :md="oMokRowCount==15?5:6" class="dashboard">
-				<v-card class="elevation-12">
+				<v-card class="elevation-12" style="overflow: hidden;">
 					<v-card-text>
+						<div style='waterMarkWrap' v-if='!isGameStarted'>
+						<div class="waterMark one">연습 모드</div>
+						<div class="waterMark two">연습 모드</div>
+						<div class="waterMark">연습 모드</div>
+						<div class="waterMark four">연습 모드</div>
+						<div class="waterMark five">연습 모드</div>
+						<div class="waterMark six">연습 모드</div>
+						<div class="waterMark seven">연습 모드</div>
+						</div>
+						
 						<div class="board">
 							<div
 								class="board-row"
@@ -94,11 +104,21 @@
 						</div>
 					</v-card-text>
 					<v-card-actions>
-						<v-btn color='warning' @click="onClickRollBackLastStone" v-if='allowRollBack' :disabled="!allowRollBack">
+						<v-btn
+							color="warning"
+							@click="onClickRollBackLastStone"
+							v-if="allowRollBack"
+							:disabled="!allowRollBack || !stoneHistory.length"
+						>
 							<v-icon>mdi-arrow-left</v-icon>한수 무르기
 						</v-btn>
 						<v-spacer></v-spacer>
-						<v-btn color='error' @click="clearBoard()" v-if='!isGameStarted' :disabled="isGameStarted || (!blackStones.length && !whiteStones.length)">
+						<v-btn
+							color="error"
+							@click="clearBoard()"
+							v-if="!isGameStarted"
+							:disabled="isGameStarted || (!blackStones.length && !whiteStones.length)"
+						>
 							<v-icon>mdi-border-clear</v-icon>보드 지우기
 						</v-btn>
 					</v-card-actions>
@@ -281,10 +301,10 @@ export default {
 			this.dialogConfirmClearBoardMsg = confirmMsg;
 			this.dialogConfirmClearBoard = true;
 		},
-		clearBoard(force){
-			if(force){
+		clearBoard(force) {
+			if (force) {
 				this.dialogConfirmClearBoard = false;
-			}else{
+			} else {
 				if (this.blackStones.length || this.whiteStones.length) {
 					this.clearBoardConfirm();
 					return;
@@ -292,6 +312,8 @@ export default {
 			}
 			this.blackStones = [];
 			this.whiteStones = [];
+			this.stoneHistory = [];
+			this.isBlackStone = true;
 		},
 		startGame() {
 			this.initGame();
@@ -702,5 +724,39 @@ export default {
 }
 .board-col.whiteStone .stoneNumber {
 	color: #000;
+}
+
+.waterMark {
+	position: absolute;
+	width: 100%;
+	text-align: center;
+	font-size: 8em;
+	top: 50%;
+	transform: rotateZ(-45deg) translateY(-50%);
+	opacity: 0.15;
+}
+.waterMark.two {
+	top: 0;
+	left: 5%;
+}
+.waterMark.seven {
+	top: 0;
+	left: 55%;
+}
+.waterMark.one {
+	top: 50%;
+	left: -50%;
+}
+.waterMark.four {
+	top: 50%;
+	left: 50%;
+}
+.waterMark.five {
+	top: 100%;
+	left: -5%;
+}
+.waterMark.six {
+	top: 100%;
+    left: -50%;
 }
 </style>
