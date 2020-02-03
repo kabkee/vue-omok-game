@@ -12,7 +12,7 @@
 			Phasellus nec sem in justo pellentesque facilisis. Phasellus magna. Cras risus ipsum, faucibus ut, ullamcorper id, varius ac, leo. In hac habitasse platea dictumst. Praesent turpis.
 		</v-alert>-->
 		<v-row align="center" justify="center">
-			<v-col cols="2" sm="12" md="2" class="dashboard">
+			<v-col cols="12" sm="12" md="4"  lg='3' class="dashboard">
 				<v-card class="elevation-12">
 					<v-card-title>
 						오목게임
@@ -53,33 +53,52 @@
 							<v-switch v-model="allowRollBack" :label="`한수 무르기 허용`" :disabled="isGameStarted"></v-switch>
 							<v-switch
 								v-model="restrictOnlyBlack"
-								:label="restrictOnlyBlack?`흑돌만 제한룰`:`흑&흰돌 모두 제한 `"
+								:label="restrictOnlyBlack?`흑돌만 제한룰`:`흑 & 흰돌 모두 제한 `"
 								:disabled="isGameStarted"
 							></v-switch>
 						</v-container>
 						<v-divider></v-divider>
 						<v-container>
 							<p>제한룰</p>
-							<v-switch v-model="restrict33" :label="`3 x 3 제한`" :disabled="isGameStarted"></v-switch>
-							<v-switch v-model="restrict34" :label="`3 x 4 제한`" :disabled="isGameStarted"></v-switch>
-							<v-switch v-model="restrict6" :label="`6 제한`" :disabled="isGameStarted"></v-switch>
+							<v-switch v-model="restrict33" :label="`3 - 3 제한`" :disabled="isGameStarted"></v-switch>
+							<v-switch v-model="restrict34" :label="`3 - 4 제한`" :disabled="isGameStarted"></v-switch>
+							<v-switch v-model="restrict6" :label="`6목이상 제한`" :disabled="isGameStarted"></v-switch>
 						</v-container>
 					</v-card-text>
+					<v-card-actions class='d-md-none'>
+						<v-spacer></v-spacer>
+						<v-btn color="error" v-if="isGameStarted" @click="abortGameConfirm()">중단</v-btn>
+						<v-btn color="primary" v-if="!isGameStarted" @click="startGame()">시작</v-btn>
+					</v-card-actions>
 				</v-card>
 			</v-col>
-			<v-col :cols="oMokRowCount==15?5:6" sm="12" :md="oMokRowCount==15?5:6" class="dashboard">
+			<v-col :cols="12" sm="12" md="7" lg='7' class="dashboard">
+				<v-radio-group class='d-md-none' v-model="isBlackStoneNumb" label="다음 차례" row>
+					<v-layout>
+						<v-radio label value="1" disabled>
+							<template v-slot:label>
+								<div class="radio blackStone stone"></div>
+							</template>
+						</v-radio>
+						<v-radio label value="0" disabled>
+							<template v-slot:label>
+								<div class="radio whiteStone stone"></div>
+							</template>
+						</v-radio>
+					</v-layout>
+				</v-radio-group>
 				<v-card class="elevation-12" style="overflow: hidden;">
 					<v-card-text>
-						<div style='waterMarkWrap' v-if='!isGameStarted'>
-						<div class="waterMark one">연습 모드</div>
-						<div class="waterMark two">연습 모드</div>
-						<div class="waterMark">연습 모드</div>
-						<div class="waterMark four">연습 모드</div>
-						<div class="waterMark five">연습 모드</div>
-						<div class="waterMark six">연습 모드</div>
-						<div class="waterMark seven">연습 모드</div>
+						<div style="waterMarkWrap" v-if="!isGameStarted">
+							<div class="waterMark one">연습 모드</div>
+							<div class="waterMark two">연습 모드</div>
+							<div class="waterMark">연습 모드</div>
+							<div class="waterMark four">연습 모드</div>
+							<div class="waterMark five">연습 모드</div>
+							<div class="waterMark six">연습 모드</div>
+							<div class="waterMark seven">연습 모드</div>
 						</div>
-						
+
 						<div class="board">
 							<div
 								class="board-row"
@@ -592,7 +611,7 @@ export default {
 	margin-left: -25px;
 }
 .dashboard {
-	align-self: baseline;
+	align-self: end;
 }
 .board {
 	width: 100%;
@@ -730,7 +749,7 @@ export default {
 	position: absolute;
 	width: 100%;
 	text-align: center;
-	font-size: 8em;
+	font-size: 4em;
 	top: 50%;
 	transform: rotateZ(-45deg) translateY(-50%);
 	opacity: 0.15;
@@ -757,6 +776,6 @@ export default {
 }
 .waterMark.six {
 	top: 100%;
-    left: -50%;
+	left: -50%;
 }
 </style>
